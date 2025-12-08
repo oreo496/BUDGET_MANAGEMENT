@@ -1,0 +1,153 @@
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from .models import User
+from .serializers import UserSerializer
+from .mfa_utils import verify_totp_token, verify_backup_code
+from utils.security import sanitize_input, validate_email, sanitize_sql_input
+import jwt
+from django.conf import settings
+from datetime import datetime, timedelta
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    """Register a new user with input sanitization."""
+    # Sanitize input to prevent XSS and SQL injection
+    data = request.data.copy()
+    
+    # Sanitize all string fields
+    if 'email' in data:
+        try:
+            data['email'] = validate_email(data['email'])
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    if 'first_name' in data:
+        data['first_name'] = sanitize_input(data['first_name'], max_length=50)
+    if 'last_name' in data:
+        data['last_name'] = sanitize_input(data['last_name'], max_length=50)
+    if 'phone' in data:
+        from utils.security import validate_phone
+        try:
+            data['phone'] = validate_phone(data['phone'])
+        except Exception:
+            data['phone'] = None
+    
+    serializer = UserSerializer(data=data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response({
+            'message': 'User created successfully',
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login(request):
+    """
+    Authenticate user and return token.
+    Supports MFA verification.
+    """
+    # Sanitize input
+    try:
+        email = validate_email(request.data.get('email'))
+    except Exception as e:
+        return Response(
+            {'error': 'Invalid email format'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    password = request.data.get('password')
+    mfa_token = sanitize_input(request.data.get('mfa_token', ''), max_length=6)
+    backup_code = sanitize_input(request.data.get('backup_code', ''), max_length=8)
+
+    if not email or not password:
+        return Response(
+            {'error': 'Email and password are required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        # Use Django ORM to prevent SQL injection
+        user = User.objects.get(email=email)
+        
+        if not user.check_password(password) or user.status != 'ACTIVE':
+            return Response(
+                {'error': 'Invalid credentials'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Check if MFA is enabled
+        if user.two_factor_enabled:
+            # If MFA token not provided, request it
+            if not mfa_token and not backup_code:
+                return Response({
+                    'mfa_required': True,
+                    'message': 'MFA token required'
+                }, status=status.HTTP_200_OK)
+            
+            # Verify MFA token or backup code
+            mfa_valid = False
+            
+            if mfa_token:
+                mfa_valid = verify_totp_token(user.two_factor_secret, mfa_token)
+            
+            if not mfa_valid and backup_code:
+                is_valid, updated_codes = verify_backup_code(user.backup_codes, backup_code)
+                if is_valid:
+                    user.backup_codes = updated_codes
+                    user.save()
+                    mfa_valid = True
+            
+            if not mfa_valid:
+                return Response(
+                    {'error': 'Invalid MFA token or backup code'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+        
+        # Generate JWT token
+        token = jwt.encode(
+            {
+                'user_id': user.get_uuid_string(),
+                'email': user.email,
+                'exp': datetime.utcnow() + timedelta(seconds=settings.JWT_EXPIRATION_DELTA)
+            },
+            settings.JWT_SECRET_KEY,
+            algorithm=settings.JWT_ALGORITHM
+        )
+        return Response({
+            'token': token,
+            'user': UserSerializer(user).data,
+            'mfa_enabled': user.two_factor_enabled
+        }, status=status.HTTP_200_OK)
+        
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'Invalid credentials'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def profile(request):
+    """Get current user profile."""
+    # This would need custom authentication middleware to extract user from JWT
+    return Response({'message': 'Profile endpoint'})
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_profile(request):
+    """Update user profile."""
+    # This would need custom authentication middleware
+    return Response({'message': 'Update profile endpoint'})
+

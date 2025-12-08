@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 249, 250, 251;
+  --background-end-rgb: 255, 255, 255;
+}
+
+/* ============================================
+   FORCE BLACK TEXT EVERYWHERE - HIGHEST PRIORITY
+   ============================================ */
+
+/* Body and root - black text */
+html, body {
+  color: #000000 !important;
+  background: #f9fafb !important;
+}
+
+/* ALL INPUT FIELDS - Force black text */
+input,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="date"],
+input[type="search"],
+input[type="url"],
+textarea,
+select {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Input when focused */
+input:focus,
+textarea:focus,
+select:focus {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Placeholder - visible gray */
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #6b7280 !important;
+}
+
+/* Select options - black text */
+select option {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+/* ALL TEXT ELEMENTS - Force black */
+p, span, div, h1, h2, h3, h4, h5, h6, label, li, td, th, strong, em, b, i, small {
+  color: #000000 !important;
+}
+
+/* Override ALL Tailwind text color classes to black (except on colored backgrounds) */
+.text-white:not(.bg-blue-600):not(.bg-blue-700):not(.bg-gradient-to-r):not(.bg-gradient-to-br):not([class*="from-blue"]):not([class*="to-blue"]):not([class*="bg-blue"]),
+.text-gray-50:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-100:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-200:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-300:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-400:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-500:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-600:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-700:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-800:not(.bg-blue-600):not(.bg-blue-700),
+.text-gray-900:not(.bg-blue-600):not(.bg-blue-700) {
+  color: #000000 !important;
+}
+
+/* But keep gray for subtle text on white backgrounds - make it darker */
+.text-gray-500,
+.text-gray-400 {
+  color: #4b5563 !important;
+}
+
+.text-gray-600 {
+  color: #374151 !important;
+}
+
+/* White backgrounds - all text black */
+.bg-white *,
+.bg-gray-50 *,
+.bg-gray-100 * {
+  color: #000000 !important;
+}
+
+/* But keep credit card white text (on blue gradient) */
+.bg-gradient-to-br.from-blue-600.to-blue-800,
+.bg-gradient-to-br.from-blue-600,
+.bg-gradient-to-br.from-blue-800,
+[class*="from-blue-600"][class*="to-blue-800"] {
+  color: #ffffff !important;
+}
+
+.bg-gradient-to-br.from-blue-600.to-blue-800 *,
+.bg-gradient-to-br.from-blue-600 *,
+.bg-gradient-to-br.from-blue-800 *,
+[class*="from-blue-600"][class*="to-blue-800"] * {
+  color: #ffffff !important;
+}
+
+/* Buttons with blue backgrounds - keep white text */
+.bg-blue-600,
+.bg-blue-700,
+button.bg-blue-600,
+button.bg-blue-700,
+.bg-gradient-to-r.from-purple-600.to-blue-600 {
+  color: #ffffff !important;
+}
+
+.bg-blue-600 *,
+.bg-blue-700 *,
+button.bg-blue-600 *,
+button.bg-blue-700 *,
+.bg-gradient-to-r.from-purple-600.to-blue-600 * {
+  color: #ffffff !important;
+}
+
+/* Links - blue */
+a:not(.bg-blue-600):not(.bg-blue-700):not(.bg-gradient-to-r):not(.bg-gradient-to-br) {
+  color: #2563eb !important;
+}
+
+a:hover:not(.bg-blue-600):not(.bg-blue-700):not(.bg-gradient-to-r):not(.bg-gradient-to-br) {
+  color: #1d4ed8 !important;
+}
+
+/* Card section specifically - force black */
+.bg-white.rounded-xl *,
+.bg-white.shadow-sm * {
+  color: #000000 !important;
+}
+
+/* EXCEPTIONS - Keep white text on colored backgrounds (must come after * selector) */
+.bg-blue-600,
+.bg-blue-700,
+.bg-gradient-to-r,
+.bg-gradient-to-br.from-blue-600,
+.bg-gradient-to-br.from-blue-800,
+[class*="from-blue-600"][class*="to-blue-800"],
+button.bg-blue-600,
+button.bg-blue-700,
+.bg-gradient-to-r.from-purple-600.to-blue-600 {
+  color: #ffffff !important;
+}
+
+.bg-blue-600 *,
+.bg-blue-700 *,
+.bg-gradient-to-r *,
+.bg-gradient-to-br.from-blue-600 *,
+.bg-gradient-to-br.from-blue-800 *,
+[class*="from-blue-600"][class*="to-blue-800"] *,
+button.bg-blue-600 *,
+button.bg-blue-700 *,
+.bg-gradient-to-r.from-purple-600.to-blue-600 * {
+  color: #ffffff !important;
+}

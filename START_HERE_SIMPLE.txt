@@ -1,0 +1,100 @@
+═══════════════════════════════════════════════════════════
+  HOW TO START THE FUNDER PROJECT - SIMPLE GUIDE
+═══════════════════════════════════════════════════════════
+
+OPTION 1: EASIEST WAY (Just Double-Click!)
+─────────────────────────────────────────────
+
+1. Open File Explorer
+2. Go to: C:\Users\omar6\OneDrive\SWE Project
+3. Double-click: COMPLETE_FIX.bat
+4. Wait 10-15 seconds
+5. Browser opens automatically!
+6. Done! ✅
+
+─────────────────────────────────────────────
+
+OPTION 2: Manual Way (If Option 1 doesn't work)
+─────────────────────────────────────────────
+
+STEP 1: Open Command Prompt
+────────────────────────────
+- Press Windows Key + R
+- Type: cmd
+- Press Enter
+- A black window opens (this is Command Prompt)
+
+STEP 2: Navigate to Project
+────────────────────────────
+In the Command Prompt window, type:
+  cd "C:\Users\omar6\OneDrive\SWE Project"
+Press Enter
+
+STEP 3: Start Backend (Terminal 1)
+──────────────────────────────────
+Type these commands one by one (press Enter after each):
+  cd backend
+  venv\Scripts\activate
+  python manage.py runserver
+
+You should see: "Starting development server at http://127.0.0.1:8000/"
+✅ KEEP THIS WINDOW OPEN!
+
+STEP 4: Start Frontend (NEW Command Prompt)
+────────────────────────────────────────────
+- Open a NEW Command Prompt (Win+R, type cmd, Enter)
+- Type:
+  cd "C:\Users\omar6\OneDrive\SWE Project\frontend"
+  npm run dev
+
+You should see: "○ Local: http://localhost:3000"
+✅ KEEP THIS WINDOW OPEN TOO!
+
+STEP 5: Open Browser
+────────────────────
+- Open your web browser (Chrome, Edge, Firefox)
+- Go to: http://localhost:3000
+- You should see the Funder dashboard!
+
+─────────────────────────────────────────────
+
+WHERE TO TYPE COMMANDS:
+───────────────────────
+✅ Command Prompt (black window)
+❌ NOT in Notepad
+❌ NOT in File Explorer address bar
+❌ NOT in browser
+
+HOW TO OPEN COMMAND PROMPT:
+───────────────────────────
+1. Press Windows Key + R
+2. Type: cmd
+3. Press Enter
+
+OR
+
+1. Click Start button
+2. Type: cmd
+3. Click "Command Prompt"
+
+─────────────────────────────────────────────
+
+QUICK REFERENCE:
+────────────────
+Backend running = Terminal 1 shows "Starting server at 8000"
+Frontend running = Terminal 2 shows "Local: http://localhost:3000"
+Site works = Open http://localhost:3000 in browser
+
+─────────────────────────────────────────────
+
+NEED HELP?
+──────────
+- Make sure BOTH Command Prompt windows are open
+- Make sure BOTH show servers running
+- Check INSTANT_FIX.md for troubleshooting
+
+═══════════════════════════════════════════════════════════
+
+
+
+
