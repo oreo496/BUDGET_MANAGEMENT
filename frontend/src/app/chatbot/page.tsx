@@ -2,10 +2,15 @@
 
 import { useState } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
+import { apiGet } from '@/lib/api';
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 export default function Chatbot() {
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{role: string, content: string}>>([]);
+  const [loading, setLoading] = useState(false);
 
   const suggestedActions = [
     'budgeting strategy',
@@ -14,7 +19,7 @@ export default function Chatbot() {
     'send your receipt',
   ];
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim()) return;
     
     const userMessage = message;
@@ -23,20 +28,30 @@ export default function Chatbot() {
     // Add user message to history
     setChatHistory([...chatHistory, { role: 'user', content: userMessage }]);
     
-    // Simulate bot response
-    setTimeout(() => {
-      const responses: {[key: string]: string} = {
-        'budgeting strategy': 'Here are some budgeting tips: 1) Track all expenses, 2) Set monthly limits, 3) Review weekly, 4) Save 20% of income.',
-        'calculations': 'I can help with financial calculations! What would you like to calculate? (Interest, savings, loan payments, etc.)',
-        'app support': 'For app support, please contact our support team at support@funder.com or check our FAQ section.',
-        'send your receipt': 'To send a receipt, go to Transactions page, select a transaction, and click "Upload Receipt".',
-      };
+    // Call backend API
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/chatbot/messages/send_message/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      });
       
-      const response = responses[userMessage.toLowerCase()] || 
-        `I understand you're asking about "${userMessage}". How can I help you with that?`;
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
       
-      setChatHistory(prev => [...prev, { role: 'assistant', content: response }]);
-    }, 1000);
+      const data = await response.json();
+      setChatHistory(prev => [...prev, { role: 'assistant', content: data.bot_response }]);
+    } catch (err: any) {
+      console.error('Chatbot error:', err);
+      setChatHistory(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Sorry, I encountered an error processing your message. Please try again.' 
+      }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSuggestedAction = (action: string) => {

@@ -23,5 +23,6 @@ urlpatterns = [
     path('api/bank-accounts/', include('bank_accounts.urls')),
     path('api/ai-alerts/', include('ai_alerts.urls')),
     path('api/admin/', include('admin_panel.urls')),
+    path('api/chatbot/', include('chatbot.urls')),
 ]
 

@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'database',
     'accounts',
     'transactions',
     'budgets',
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'bank_accounts',
     'ai_alerts',
     'admin_panel',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
