@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import { apiGet } from '@/lib/api';
 
@@ -11,6 +11,12 @@ export default function Chatbot() {
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{role: string, content: string}>>([]);
   const [loading, setLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory]);
 
   const suggestedActions = [
     'budgeting strategy',
@@ -107,7 +113,7 @@ export default function Chatbot() {
 
             {/* Chat History */}
             {chatHistory.length > 0 && (
-              <div className="space-y-4 max-h-96 overflow-y-auto">
+              <div className="space-y-4 max-h-96 overflow-y-auto mb-4">
                 {chatHistory.map((msg, index) => (
                   <div
                     key={index}
@@ -124,6 +130,7 @@ export default function Chatbot() {
                     </div>
                   </div>
                 ))}
+                <div ref={chatEndRef} />
               </div>
             )}
           </div>
