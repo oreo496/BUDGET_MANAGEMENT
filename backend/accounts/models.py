@@ -4,7 +4,7 @@ import bcrypt
 
 
 class User(models.Model):
-    id = models.BinaryField(primary_key=True, max_length=16, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True, max_length=100)
@@ -25,9 +25,7 @@ class User(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            # Generate UUID and convert to binary
-            uuid_obj = uuid.uuid4()
-            self.id = uuid_obj.bytes
+            self.id = uuid.uuid4()
         super().save(*args, **kwargs)
 
     def set_password(self, raw_password):
@@ -45,15 +43,30 @@ class User(models.Model):
         )
 
     def get_uuid_string(self):
-        """Convert binary ID to UUID string."""
-        return str(uuid.UUID(bytes=self.id))
+        """Return UUID string for the user id."""
+        return str(self.id)
+
+    @property
+    def is_authenticated(self):
+        """Always return True for authenticated users."""
+        return True
+    
+    @property
+    def is_active(self):
+        """Check if user status is active."""
+        return self.status == 'ACTIVE'
+    
+    @property
+    def is_anonymous(self):
+        """Always return False for non-anonymous users."""
+        return False
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email})"
 
 
 class Admin(models.Model):
-    id = models.BinaryField(primary_key=True, max_length=16, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, max_length=100)
     password_hash = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -63,8 +76,7 @@ class Admin(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            uuid_obj = uuid.uuid4()
-            self.id = uuid_obj.bytes
+            self.id = uuid.uuid4()
         super().save(*args, **kwargs)
 
     def set_password(self, raw_password):
@@ -82,8 +94,8 @@ class Admin(models.Model):
         )
 
     def get_uuid_string(self):
-        """Convert binary ID to UUID string."""
-        return str(uuid.UUID(bytes=self.id))
+        """Return UUID string for the admin id."""
+        return str(self.id)
 
     def __str__(self):
         return self.email

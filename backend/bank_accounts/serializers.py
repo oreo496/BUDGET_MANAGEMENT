@@ -4,11 +4,11 @@ from .models import BankAccount
 
 class BankAccountSerializer(serializers.ModelSerializer):
     id = serializers.SerializerMethodField()
-    token = serializers.CharField(write_only=True)
+    token = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = BankAccount
-        fields = ['id', 'user', 'institution_name', 'account_type', 'token', 'created_at']
+        fields = ['id', 'institution_name', 'account_type', 'token', 'created_at']
         read_only_fields = ['id', 'created_at']
 
     def get_id(self, obj):

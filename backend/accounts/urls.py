@@ -7,6 +7,7 @@ urlpatterns = [
     path('login/', views.login, name='login'),
     path('profile/', views.profile, name='profile'),
     path('profile/update/', views.update_profile, name='update_profile'),
+    path('profile/change-password/', views.change_password, name='change_password'),
     # MFA endpoints
     path('mfa/setup/', mfa_views.setup_mfa, name='mfa_setup'),
     path('mfa/verify-setup/', mfa_views.verify_mfa_setup, name='mfa_verify_setup'),

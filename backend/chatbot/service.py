@@ -6,6 +6,12 @@ import os
 import requests
 from typing import Dict, Any
 
+try:
+    from transformers import pipeline
+except ImportError:
+    pipeline = None
+    print("Warning: transformers not installed. Chatbot will use fallback responses.")
+
 UserFinancialData = Dict[str, Any]
 
 # Global pipeline - lazy loaded
@@ -14,14 +20,18 @@ _generator = None
 def _get_generator():
     """Lazy load the GPT-2 generator pipeline on first use."""
     global _generator
-    if _generator is None:
-        try:
-            from transformers import pipeline
-            _generator = pipeline("text-generation", model="gpt2")
-        except Exception:
-            _generator = False  # Mark as failed to avoid retrying
-    return _generator if _generator else None
-
+    if _generator is not None:
+        return _generator
+    
+    if pipeline is None:
+        return None
+    try:
+        import torch  # noqa: F401  # ensure torch is present
+        from transformers import pipeline as _pipeline
+        _generator = _pipeline("text-generation", model="gpt2")
+    except Exception:
+        _generator = None
+    return _generator
 
 INTERNAL_PROMPT = (
     "You are FunderBot, an AI financial advisor for Funder app with pages: "
