@@ -220,7 +220,7 @@ export default function Dashboard() {
               }}
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
             >
-              Send <span>✈</span>
+              Send
             </button>
           </div>
         </div>

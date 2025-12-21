@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'ai_alerts',
     'admin_panel',
     'chatbot',
+    'loans',
 ]
 
 MIDDLEWARE = [
@@ -56,7 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'utils.xss_protection.XSSProtectionMiddleware',  # XSS protection
+    'utils.middleware.SecurityHeadersMiddleware',  # Security headers (XSS, CSP, etc.)
 ]
 
 ROOT_URLCONF = 'funder.urls'
@@ -161,6 +162,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'utils.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

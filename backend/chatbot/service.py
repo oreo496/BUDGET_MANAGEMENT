@@ -4,7 +4,11 @@ Chatbot service using transformers for NLP.
 Handles chat interactions and AI responses.
 """
 
-from transformers import pipeline
+try:
+    from transformers import pipeline
+except ImportError:
+    pipeline = None
+    print("Warning: transformers not installed. Chatbot will use fallback responses.")
 
 # ==== NLP Section ====
 _generator = None
@@ -14,6 +18,9 @@ def _get_generator():
     global _generator
     if _generator is not None:
         return _generator
+    
+    if pipeline is None:
+        return None
     try:
         import torch  # noqa: F401  # ensure torch is present
         from transformers import pipeline
