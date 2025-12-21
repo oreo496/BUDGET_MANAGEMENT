@@ -3,16 +3,19 @@ URL configuration for funder project.
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.http import JsonResponse
-
-def health_check(request):
-    """Health check endpoint."""
-    return JsonResponse({'status': 'ok', 'message': 'Funder API is running'})
+from funder.views import health_check, predict_transaction, predict_transaction_test
 
 urlpatterns = [
+    # Health check endpoints
     path('', health_check, name='health'),
     path('health/', health_check, name='health'),
     path('api/health/', health_check, name='api-health'),
+    
+    # AI Prediction endpoints
+    path('api/predict/', predict_transaction, name='predict-transaction'),
+    path('api/predict/test/', predict_transaction_test, name='predict-test'),
+    
+    # Admin and app routes
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
     path('api/users/', include('accounts.urls')),
