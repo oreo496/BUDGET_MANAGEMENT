@@ -2,7 +2,7 @@ from rest_framework import authentication
 from rest_framework import exceptions
 from django.conf import settings
 import jwt
-from accounts.models import User
+from accounts.models import User, Admin
 
 
 class JWTAuthentication(authentication.BaseAuthentication):
@@ -40,14 +40,26 @@ class JWTAuthentication(authentication.BaseAuthentication):
             if not user_id and not admin_id:
                 raise exceptions.AuthenticationFailed('Invalid token payload')
             
-            # For admin tokens, we don't validate against User model
-            # Admin authentication is handled separately
+            # For admin tokens, validate against Admin model
             if admin_id:
-                return (None, token)  # Return None for user, just validate token
+                try:
+                    admin = Admin.objects.get(id=admin_id)
+                    # Create a pseudo-user object with admin properties for authentication
+                    # This allows admin to pass IsAuthenticated checks
+                    admin.is_authenticated = True
+                    admin.is_active = True
+                    return (admin, token)
+                except Admin.DoesNotExist:
+                    raise exceptions.AuthenticationFailed('Admin not found')
                 
+            # For regular user tokens, validate against User model
             try:
                 user = User.objects.get(id=user_id)
             except User.DoesNotExist:
+                # Log for debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"User not found: user_id={user_id}, type={type(user_id)}")
                 raise exceptions.AuthenticationFailed('User not found')
                 
             return (user, token)

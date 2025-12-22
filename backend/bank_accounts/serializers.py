@@ -15,7 +15,9 @@ class BankAccountSerializer(serializers.ModelSerializer):
         return obj.get_uuid_string()
 
     def create(self, validated_data):
+        # Extract token and user
         token = validated_data.pop('token')
+        # User is already in validated_data from serializer.save(user=...)
         bank_account = BankAccount(**validated_data)
         bank_account.encrypt_token(token)
         bank_account.save()

@@ -558,7 +558,11 @@ def predict_flagged_transaction(request):
 
 class AIAlertViewSet(viewsets.ModelViewSet):
     serializer_class = AIAlertSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return AIAlert.objects.all()
+        user = getattr(self.request, 'user', None)
+        if user and getattr(user, 'is_authenticated', False):
+            return AIAlert.objects.filter(user=user).order_by('-created_at')
+        return AIAlert.objects.none()
 

@@ -145,20 +145,27 @@ class InAppNotificationStrategy(NotificationStrategy):
         """Create in-app notification."""
         from ai_alerts.models import AIAlert
         from accounts.models import User
-        
+
         try:
             # recipient should be user_id
             user = User.objects.get(id=recipient)
-            
+
             # Determine alert type from subject
+            subject_lower = subject.lower()
             alert_type = 'BUDGET_ALERT'
-            if 'fraud' in subject.lower():
+            if 'fraud' in subject_lower:
                 alert_type = 'FRAUD'
-            elif 'goal' in subject.lower():
+            elif 'goal' in subject_lower:
                 alert_type = 'GOAL_RECOMMENDATION'
-            elif 'spending' in subject.lower() or 'pattern' in subject.lower():
+                if 'risk' in subject_lower or 'overspend' in subject_lower:
+                    # Some databases may not include GOAL_RISK in enum; fall back safely
+                    alert_type = 'GOAL_RECOMMENDATION'
+            elif 'loan' in subject_lower:
+                # Some databases may not include LOAN_REMINDER in enum; fall back safely
+                alert_type = 'BUDGET_ALERT'
+            elif 'spending' in subject_lower or 'pattern' in subject_lower:
                 alert_type = 'SPENDING_PATTERN'
-            
+
             AIAlert.objects.create(
                 user=user,
                 message=f"{subject}: {message}",

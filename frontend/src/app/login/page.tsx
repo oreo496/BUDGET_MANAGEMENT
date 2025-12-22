@@ -7,8 +7,12 @@ import api from '../../lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [pendingCreds, setPendingCreds] = useState<{ identifier: string; password: string } | null>(null);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaToken, setMfaToken] = useState('');
+  const [backupCode, setBackupCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,11 +22,36 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.post('/auth/login/', { email, password });
+      const idToUse = pendingCreds?.identifier || identifier;
+      const passwordToUse = pendingCreds?.password || password;
+
+      const payload: Record<string, string> = { password: passwordToUse };
+      if (idToUse.includes('@')) {
+        payload.email = idToUse;
+      }
+      payload.username = idToUse; // API accepts username or email; send both to be safe
+
+      if (mfaRequired) {
+        if (mfaToken) payload.mfa_token = mfaToken;
+        if (backupCode) payload.backup_code = backupCode;
+      }
+
+      const res = await api.post('/auth/login/', payload);
+      if (res.data?.mfa_required || res.data?.requires_mfa) {
+        setMfaRequired(true);
+        setPendingCreds({ identifier: idToUse, password: passwordToUse });
+        setError('MFA required. Enter your 6-digit code or a backup code.');
+        return;
+      }
+
       const token = res.data.token;
       if (token && typeof window !== 'undefined') {
         localStorage.setItem('token', token);
       }
+      setMfaRequired(false);
+      setMfaToken('');
+      setBackupCode('');
+      setPendingCreds(null);
       router.push('/');
     } catch (err: any) {
       const errorData = err?.response?.data;
@@ -45,8 +74,14 @@ export default function LoginPage() {
       <h2 className="text-2xl font-semibold mb-4">Sign in</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm">Email</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="w-full border px-3 py-2 rounded" />
+          <label className="block text-sm">Email or Username</label>
+          <input
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            disabled={mfaRequired}
+            placeholder="jane@doe.com or janedoe"
+            className="w-full border px-3 py-2 rounded"
+          />
         </div>
         <div>
           <label className="block text-sm">Password</label>
@@ -55,6 +90,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type={showPassword ? 'text' : 'password'}
+              disabled={mfaRequired && !!pendingCreds}
               className="w-full border px-3 py-2 rounded"
             />
             <button
@@ -66,6 +102,28 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+        {mfaRequired && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm">MFA Code</label>
+              <input
+                value={mfaToken}
+                onChange={(e) => setMfaToken(e.target.value)}
+                placeholder="6-digit code"
+                className="w-full border px-3 py-2 rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-sm">Backup Code (optional)</label>
+              <input
+                value={backupCode}
+                onChange={(e) => setBackupCode(e.target.value)}
+                placeholder="8-character backup"
+                className="w-full border px-3 py-2 rounded"
+              />
+            </div>
+          </div>
+        )}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
@@ -80,7 +138,7 @@ export default function LoginPage() {
         )}
         <div className="flex items-center justify-between">
           <button disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded">
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Signing in...' : mfaRequired ? 'Verify MFA' : 'Sign in'}
           </button>
           <a href="/register" className="text-sm text-blue-600">Create account</a>
         </div>

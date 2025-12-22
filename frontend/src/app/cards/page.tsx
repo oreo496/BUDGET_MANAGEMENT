@@ -13,6 +13,7 @@ export default function Cards() {
   const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Get tomorrow's date as minimum date
   const getTomorrowDate = () => {
@@ -28,10 +29,15 @@ export default function Cards() {
   const fetchCards = async () => {
     try {
       const res = await api.get('/bank-accounts/');
-      setCards(Array.isArray(res.data) ? res.data : []);
+      console.log('Fetched cards:', res.data);
+      const cardsData = Array.isArray(res.data) ? res.data : (res.data.results ? res.data.results : []);
+      console.log('Cards to display:', cardsData);
+      setCards(cardsData);
+      setError(null);
     } catch (err) {
       console.error('Error fetching cards:', err);
       setCards([]);
+      setError('Unable to load cards. Please make sure you are signed in.');
     }
   };
 
@@ -66,25 +72,35 @@ export default function Cards() {
     }
 
     setLoading(true);
+    setError(null);
     try {
-      await api.post('/bank-accounts/', {
+      const response = await api.post('/bank-accounts/', {
         institution_name: cardName,
         account_type: cardType,
         token: cleanCardNumber
       });
+      console.log('Card added response:', response.data);
       setCardNumber('');
       setCardName('');
       setCardType('Classic');
       setExpirationDate('');
-      await fetchCards();
+      
+      // Refresh cards list with a small delay to ensure backend has committed
+      setTimeout(async () => {
+        await fetchCards();
+      }, 500);
+      
       alert('Card added successfully!');
     } catch (err: any) {
       console.error('Error adding card:', err);
+      console.error('Error response:', err?.response);
+      console.error('Error data:', err?.response?.data);
       const errorMsg = err?.response?.data?.detail || 
                       err?.response?.data?.user?.[0] || 
                       err?.response?.data?.token?.[0] ||
-                      'Failed to add card';
-      alert(errorMsg);
+                      err?.response?.data?.error ||
+                      JSON.stringify(err?.response?.data || 'Failed to add card');
+      setError('Failed to add card: ' + errorMsg);
     } finally {
       setLoading(false);
     }
@@ -108,6 +124,10 @@ export default function Cards() {
   return (
     <MainLayout title="Credit Cards">
       <div className="space-y-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg">{error}</div>
+        )}
+
         {/* Primary Cards Section */}
         {cards.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-6">

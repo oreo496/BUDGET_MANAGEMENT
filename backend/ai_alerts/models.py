@@ -13,7 +13,9 @@ class AIAlert(models.Model):
             ('BUDGET_ALERT', 'Budget Alert'),
             ('SPENDING_PATTERN', 'Spending Pattern'),
             ('FRAUD', 'Fraud'),
-            ('GOAL_RECOMMENDATION', 'Goal Recommendation')
+            ('GOAL_RECOMMENDATION', 'Goal Recommendation'),
+            ('LOAN_REMINDER', 'Loan Reminder'),
+            ('GOAL_RISK', 'Goal Risk')
         ]
     )
     created_at = models.DateTimeField(auto_now_add=True)

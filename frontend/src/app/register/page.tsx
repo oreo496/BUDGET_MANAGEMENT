@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+    const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,10 +29,16 @@ export default function RegisterPage() {
         setLoading(false);
         return;
       }
+      if (!username.trim()) {
+        setError('Username is required.');
+        setLoading(false);
+        return;
+      }
 
       await api.post('/auth/register/', {
         first_name: firstName,
         last_name: lastName,
+        username,
         email,
         password,
       });
@@ -63,6 +70,10 @@ export default function RegisterPage() {
         <div>
           <label className="block text-sm">Last name</label>
           <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div>
+          <label className="block text-sm">Username</label>
+          <input value={username} onChange={(e) => setUsername(e.target.value)} className="w-full border px-3 py-2 rounded" placeholder="Unique username" />
         </div>
         <div>
           <label className="block text-sm">Email</label>

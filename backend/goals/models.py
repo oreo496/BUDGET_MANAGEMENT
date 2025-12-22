@@ -4,7 +4,7 @@ from accounts.models import User
 
 
 class Goal(models.Model):
-    id = models.BinaryField(primary_key=True, max_length=16, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='user_id')
     title = models.CharField(max_length=100)
     target_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -18,12 +18,11 @@ class Goal(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            uuid_obj = uuid.uuid4()
-            self.id = uuid_obj.bytes
+            self.id = uuid.uuid4()
         super().save(*args, **kwargs)
 
     def get_uuid_string(self):
-        return str(uuid.UUID(bytes=self.id))
+        return str(self.id)
 
     @property
     def progress_percentage(self):

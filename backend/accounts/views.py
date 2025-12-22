@@ -61,6 +61,13 @@ def register(request):
     """Register a new user with input sanitization."""
     # Sanitize input to prevent XSS and SQL injection
     data = request.data.copy()
+    username = sanitize_input(data.get('username', ''), max_length=50)
+    if not username:
+        return Response({'error': 'Username is required and must be unique.'}, status=status.HTTP_400_BAD_REQUEST)
+    # Ensure username is unique before hitting DB unique constraint
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'Username already exists. Please choose another one.'}, status=status.HTTP_400_BAD_REQUEST)
+    data['username'] = username
     
     # Sanitize all string fields
     if 'email' in data:
@@ -99,29 +106,35 @@ def login(request):
     """
     Authenticate user and return token.
     Supports MFA verification.
+    Accepts username or email for login.
     """
     # Sanitize input
-    try:
-        email = validate_email(request.data.get('email'))
-    except Exception as e:
-        return Response(
-            {'error': 'Invalid email format'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
+    username_or_email = sanitize_input(
+        request.data.get('identifier') or request.data.get('email') or request.data.get('username', ''),
+        max_length=100
+    )
     password = request.data.get('password')
     mfa_token = sanitize_input(request.data.get('mfa_token', ''), max_length=6)
     backup_code = sanitize_input(request.data.get('backup_code', ''), max_length=8)
 
-    if not email or not password:
+    if not username_or_email or not password:
         return Response(
-            {'error': 'Email and password are required'},
+            {'error': 'Username/Email and password are required'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
     try:
-        # Use Django ORM to prevent SQL injection
-        user = User.objects.get(email=email)
+        # Try to find user by username or email
+        try:
+            if '@' in username_or_email:
+                user = User.objects.get(email=validate_email(username_or_email))
+            else:
+                user = User.objects.get(username=username_or_email)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Invalid credentials'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         
         if not user.check_password(password) or user.status != 'ACTIVE':
             return Response(

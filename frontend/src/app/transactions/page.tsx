@@ -1,93 +1,135 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import CreditCard from '@/components/Cards/CreditCard';
-import BarChart from '@/components/Charts/BarChart';
+import api from '@/lib/api';
 
 export default function Transactions() {
   const [activeTab, setActiveTab] = useState<'all' | 'income' | 'expense'>('all');
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [cards, setCards] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({
+    description: '',
+    amount: '',
+    type: 'EXPENSE',
+    date: '',
+    category: ''
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const monthlyExpense = [
-    { label: 'Aug', value: 8000 },
-    { label: 'Sep', value: 9500 },
-    { label: 'Oct', value: 11000 },
-    { label: 'Nov', value: 10000 },
-    { label: 'Dec', value: 12500, color: '#14b8a6' },
-    { label: 'Jan', value: 10500 },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const transactions = [
-    {
-      id: 1,
-      description: 'Spotify Subscription',
-      transactionId: '#12548796',
-      type: 'Shopping',
-      card: '1234****',
-      date: '28 Jan, 12.30 AM',
-      amount: -2500,
-      icon: '🎵',
-      isIncome: false,
-    },
-    {
-      id: 2,
-      description: 'Freepik Sales',
-      transactionId: '#12548796',
-      type: 'Transfer',
-      card: '1234****',
-      date: '25 Jan, 10.40 PM',
-      amount: 750,
-      icon: '💰',
-      isIncome: true,
-    },
-    {
-      id: 3,
-      description: 'Mobile Service',
-      transactionId: '#12548796',
-      type: 'Service',
-      card: '1234****',
-      date: '20 Jan, 10.40 PM',
-      amount: -150,
-      icon: '📱',
-      isIncome: false,
-    },
-    {
-      id: 4,
-      description: 'Wilson',
-      transactionId: '#12548796',
-      type: 'Transfer',
-      card: '1234****',
-      date: '15 Jan, 03.29 PM',
-      amount: -1050,
-      icon: '👤',
-      isIncome: false,
-    },
-    {
-      id: 5,
-      description: 'Emily',
-      transactionId: '#12548796',
-      type: 'Transfer',
-      card: '1234****',
-      date: '14 Jan, 10.40 PM',
-      amount: 840,
-      icon: '👤',
-      isIncome: true,
-    },
-  ];
+  const fetchData = async () => {
+    try {
+      const [txnRes, cardRes] = await Promise.all([
+        api.get('/transactions/'),
+        api.get('/bank-accounts/')
+      ]);
+      const txns = Array.isArray(txnRes.data)
+        ? txnRes.data
+        : (txnRes.data?.results ? txnRes.data.results : []);
+      setTransactions(txns);
+      setCards(Array.isArray(cardRes.data) ? cardRes.data : []);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setTransactions([]);
+      setCards([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredTransactions = transactions.filter(t => {
     if (activeTab === 'all') return true;
-    if (activeTab === 'income') return t.isIncome;
-    return !t.isIncome;
+    if (activeTab === 'income') return (t.transaction_type || t.type) === 'INCOME';
+    return (t.transaction_type || t.type) === 'EXPENSE';
   });
 
   return (
     <MainLayout title="Transactions">
       <div className="space-y-6">
+        {/* Add Transaction */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Add Transaction</h2>
+          {error && <div className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">{error}</div>}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <input
+              className="border rounded px-3 py-2"
+              placeholder="Description"
+              value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+            />
+            <input
+              type="number"
+              step="0.01"
+              className="border rounded px-3 py-2"
+              placeholder="Amount"
+              value={form.amount}
+              onChange={e => setForm({ ...form, amount: e.target.value })}
+            />
+            <select
+              className="border rounded px-3 py-2"
+              value={form.type}
+              onChange={e => setForm({ ...form, type: e.target.value })}
+            >
+              <option value="INCOME">Income</option>
+              <option value="EXPENSE">Expense</option>
+            </select>
+            <input
+              type="date"
+              className="border rounded px-3 py-2"
+              value={form.date}
+              onChange={e => setForm({ ...form, date: e.target.value })}
+            />
+          </div>
+          <div className="mt-3">
+            <button
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                setError(null);
+                try {
+                  const body: any = {
+                    description: form.description || null,
+                    amount: parseFloat(form.amount),
+                    type: form.type,
+                    date: form.date || new Date().toISOString().slice(0,10),
+                    source: 'MANUAL'
+                  };
+                  const res = await api.post('/transactions/', body);
+                  const t = res.data;
+                  const uiItem = {
+                    id: t.id,
+                    description: t.description || form.description,
+                    category_name: t.category?.name || 'Uncategorized',
+                    transaction_type: t.type,
+                    date: t.date,
+                    amount: t.amount
+                  };
+                  setTransactions(prev => [uiItem, ...prev]);
+                  setForm({ description: '', amount: '', type: 'EXPENSE', date: '', category: '' });
+                } catch (err: any) {
+                  setError(err?.response?.data?.detail || err?.response?.data?.error || 'Failed to add transaction');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              {saving ? 'Saving...' : 'Add Transaction'}
+            </button>
+          </div>
+        </div>
+
         {/* Primary Card Section */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Primary Card</h2>
+            <h2 className="text-lg font-semibold text-gray-800">Your Cards</h2>
             <button
               onClick={() => window.location.href = '/cards'}
               className="text-sm text-blue-600 hover:underline"
@@ -95,30 +137,30 @@ export default function Transactions() {
               See All
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <CreditCard
-              balance="E£ 273,907.37"
-              cardHolder="Mohamed Elhosieny"
-              validThru="07/28"
-              cardNumber="3778 **** **** 1234"
-            />
-            <CreditCard
-              balance="E£ 273,907.37"
-              cardNumber="3778 **** **** 1234"
-              showCVV
-            />
-          </div>
+          {cards.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <div className="text-4xl mb-2">💳</div>
+              <p>No cards added yet</p>
+              <p className="text-sm mt-1">Add a card from the Cards page</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {cards.slice(0, 2).map((card, idx) => (
+                <CreditCard
+                  key={card.id || idx}
+                  balance="E£ ****.**"
+                  cardHolder={card.institution_name || 'Card Holder'}
+                  validThru="**/**"
+                  cardNumber={`**** **** **** ${card.token?.slice(-4) || '****'}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* My Expense Chart */}
-          <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">My Expense</h2>
-            <BarChart data={monthlyExpense} height={250} showValues />
-          </div>
-
+        <div className="grid grid-cols-1 gap-6">
           {/* Recent Transactions */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-800">Recent Transactions</h2>
             </div>
@@ -157,99 +199,67 @@ export default function Transactions() {
               </button>
             </div>
 
-            {/* Transactions Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Description</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Transaction ID</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Type</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Card</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Amount</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Receipt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{transaction.icon}</span>
-                          <span className="font-medium text-gray-800">{transaction.description}</span>
-                          {transaction.isIncome ? (
-                            <span className="text-green-500">↑</span>
-                          ) : (
-                            <span className="text-red-500">↓</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{transaction.transactionId}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{transaction.type}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{transaction.card}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{transaction.date}</td>
-                      <td className={`py-3 px-4 font-semibold ${
-                        transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.amount > 0 ? '+' : ''}E£{Math.abs(transaction.amount).toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <button
-                          onClick={() => {
-                            alert(`Downloading receipt for ${transaction.description}...`);
-                            // In real app, this would download the receipt PDF
-                          }}
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          Download
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-end gap-2 mt-4">
-              <button
-                onClick={() => alert('Previous page')}
-                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => alert('Page 1')}
-                className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
-              >
-                1
-              </button>
-              <button
-                onClick={() => alert('Page 2')}
-                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-              >
-                2
-              </button>
-              <button
-                onClick={() => alert('Page 3')}
-                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-              >
-                3
-              </button>
-              <button
-                onClick={() => alert('Page 4')}
-                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-              >
-                4
-              </button>
-              <button
-                onClick={() => alert('Next page')}
-                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-              >
-                Next
-              </button>
-            </div>
+            {loading ? (
+              <div className="text-center py-8 text-gray-400">Loading transactions...</div>
+            ) : filteredTransactions.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <div className="text-4xl mb-2">📊</div>
+                <p>No {activeTab !== 'all' ? activeTab : ''} transactions yet</p>
+                <p className="text-sm mt-1">Start by adding your transactions</p>
+              </div>
+            ) : (
+              <>
+                {/* Transactions Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Description</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Category</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Type</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Date</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTransactions.map((transaction) => (
+                        <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">
+                                {(transaction.transaction_type || transaction.type) === 'INCOME' ? '💰' : '💸'}
+                              </span>
+                              <span className="font-medium text-gray-800">
+                                {transaction.description || 'Transaction'}
+                              </span>
+                              {(transaction.transaction_type || transaction.type) === 'INCOME' ? (
+                                <span className="text-green-500">↑</span>
+                              ) : (
+                                <span className="text-red-500">↓</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {transaction.category_name || 'Uncategorized'}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {transaction.transaction_type || transaction.type || 'N/A'}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {new Date(transaction.date || transaction.created_at).toLocaleDateString()}
+                          </td>
+                          <td className={`py-3 px-4 font-semibold ${
+                            (transaction.transaction_type || transaction.type) === 'INCOME' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {(transaction.transaction_type || transaction.type) === 'INCOME' ? '+' : '-'}E£{Math.abs(transaction.amount).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

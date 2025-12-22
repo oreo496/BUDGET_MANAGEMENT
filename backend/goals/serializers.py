@@ -10,7 +10,7 @@ class GoalSerializer(serializers.ModelSerializer):
         model = Goal
         fields = ['id', 'user', 'title', 'target_amount', 'current_amount',
                   'deadline', 'progress_percentage', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
 
     def get_id(self, obj):
         return obj.get_uuid_string()

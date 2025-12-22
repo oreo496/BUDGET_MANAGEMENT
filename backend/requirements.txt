@@ -8,6 +8,7 @@ PyJWT==2.8.0
 cryptography==41.0.7
 pyotp==2.9.0
 qrcode==7.4.2
+plaid-python==16.0.0
 pytest==7.4.3
 pytest-django==4.7.0
 transformers==4.35.0

@@ -10,8 +10,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = ['id', 'user', 'category', 'bank_account', 'amount', 'type',
-                  'merchant', 'date', 'source', 'flagged_fraud', 'ai_alert_message', 'created_at']
-        read_only_fields = ['id', 'created_at']
+                  'description', 'merchant', 'date', 'source', 'flagged_fraud', 'ai_alert_message', 'created_at']
+        read_only_fields = ['id', 'created_at', 'user']
 
     def get_id(self, obj):
         return obj.get_uuid_string()

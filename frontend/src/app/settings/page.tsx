@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
+import api from '@/lib/api';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<'preferences' | 'security'>('preferences');
@@ -17,6 +18,79 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
+  const [mfaData, setMfaData] = useState<{ qr_code: string; backup_codes: string[]; secret: string } | null>(null);
+  const [mfaToken, setMfaToken] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch current MFA status
+    const fetchMfaStatus = async () => {
+      try {
+        const res = await api.get('/auth/mfa/status/');
+        setMfaEnabled(res.data.mfa_enabled);
+      } catch (err) {
+        console.error('Failed to fetch MFA status:', err);
+      }
+    };
+    fetchMfaStatus();
+  }, []);
+
+  const handleEnableMfa = async () => {
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/mfa/setup/');
+      setMfaData(res.data);
+      setShowMfaSetup(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to setup MFA');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyMfa = async () => {
+    if (!mfaToken || !mfaData) return;
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      await api.post('/auth/mfa/verify-setup/', {
+        token: mfaToken,
+        secret: mfaData.secret
+      });
+      setMfaEnabled(true);
+      setShowMfaSetup(false);
+      setMfaToken('');
+      setSuccess('MFA enabled successfully!');
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Invalid token. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisableMfa = async () => {
+    const password = prompt('Enter your password to disable MFA:');
+    if (!password) return;
+    
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      await api.post('/auth/mfa/disable/', { password });
+      setMfaEnabled(false);
+      setSuccess('MFA disabled successfully');
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to disable MFA');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <MainLayout title="Setting">
@@ -195,6 +269,19 @@ export default function Settings() {
               {/* Two-Factor Authentication Section */}
               <div className="border-b border-gray-200 pb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Two-Factor Authentication</h3>
+                
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                )}
+                
+                {success && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-green-800">{success}</p>
+                  </div>
+                )}
+                
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-gray-700 font-medium">2FA Status</p>
@@ -206,13 +293,12 @@ export default function Settings() {
                     <input
                       type="checkbox"
                       checked={mfaEnabled}
+                      disabled={loading}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setShowMfaSetup(true);
+                          handleEnableMfa();
                         } else {
-                          if (confirm('Are you sure you want to disable 2FA?')) {
-                            setMfaEnabled(false);
-                          }
+                          handleDisableMfa();
                         }
                       }}
                       className="sr-only peer"
@@ -220,29 +306,65 @@ export default function Settings() {
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
-                {showMfaSetup && (
+                
+                {showMfaSetup && mfaData && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm text-blue-800 mb-3">
-                      Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                    <p className="text-sm text-blue-800 mb-3 font-semibold">
+                      Step 1: Scan QR Code
                     </p>
-                    <div className="flex justify-center mb-4">
-                      <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center">
-                        <span className="text-gray-400">QR Code Here</span>
-                      </div>
+                    <p className="text-xs text-blue-700 mb-3">
+                      Use Google Authenticator, Authy, or any TOTP authenticator app
+                    </p>
+                    <div className="flex justify-center mb-4 bg-white p-4 rounded-lg">
+                      <img 
+                        src={mfaData.qr_code} 
+                        alt="MFA QR Code" 
+                        className="w-48 h-48"
+                      />
                     </div>
+                    
+                    <p className="text-sm text-blue-800 mb-2 font-semibold">
+                      Step 2: Backup Codes
+                    </p>
+                    <p className="text-xs text-blue-700 mb-2">
+                      Save these codes in a safe place. Each can be used once if you lose access to your authenticator.
+                    </p>
+                    <div className="bg-white p-3 rounded border border-blue-300 mb-4 font-mono text-sm">
+                      {mfaData.backup_codes.map((code, idx) => (
+                        <div key={idx} className="text-gray-700">{code}</div>
+                      ))}
+                    </div>
+                    
+                    <p className="text-sm text-blue-800 mb-2 font-semibold">
+                      Step 3: Verify
+                    </p>
+                    <p className="text-xs text-blue-700 mb-2">
+                      Enter the 6-digit code from your authenticator app
+                    </p>
+                    <input
+                      type="text"
+                      value={mfaToken}
+                      onChange={(e) => setMfaToken(e.target.value)}
+                      placeholder="123456"
+                      maxLength={6}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3 text-center text-2xl tracking-widest"
+                    />
+                    
                     <div className="flex gap-2">
                       <button
-                        onClick={() => {
-                          setMfaEnabled(true);
-                          setShowMfaSetup(false);
-                          alert('2FA enabled successfully!');
-                        }}
-                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                        onClick={handleVerifyMfa}
+                        disabled={loading || mfaToken.length !== 6}
+                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400"
                       >
-                        Verify & Enable
+                        {loading ? 'Verifying...' : 'Verify & Enable'}
                       </button>
                       <button
-                        onClick={() => setShowMfaSetup(false)}
+                        onClick={() => {
+                          setShowMfaSetup(false);
+                          setMfaData(null);
+                          setMfaToken('');
+                        }}
+                        disabled={loading}
                         className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                       >
                         Cancel

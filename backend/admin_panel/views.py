@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.conf import settings
+from datetime import datetime, timedelta
 import jwt
 
 from .models import SystemLog, AdminAction
@@ -34,19 +35,25 @@ def admin_login(request):
     data = request.data
     email = data.get('email')
     password = data.get('password')
+    
     if not email or not password:
         return Response({'detail': 'Email and password required'}, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
         admin = AppAdmin.objects.get(email=email)
-        if not admin.check_password(password):
-            return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-        token = jwt.encode({
-            'admin_id': admin.get_uuid_string(),
-            'email': admin.email,
-        }, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-        return Response({'token': token, 'admin': {'email': admin.email}}, status=status.HTTP_200_OK)
     except AppAdmin.DoesNotExist:
-        return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'detail': 'Admin account not found. Please create an admin account first.'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    if not admin.check_password(password):
+        return Response({'detail': 'Invalid password'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    token = jwt.encode({
+        'admin_id': admin.get_uuid_string(),
+        'email': admin.email,
+        'exp': datetime.utcnow() + timedelta(seconds=settings.JWT_EXPIRATION_DELTA)
+    }, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    
+    return Response({'token': token, 'admin': {'email': admin.email}}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

@@ -213,11 +213,20 @@ CORS_ALLOW_HEADERS = [
 # JWT Settings
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', SECRET_KEY)
 JWT_ALGORITHM = 'HS256'
-JWT_EXPIRATION_DELTA = 86400  # 24 hours
+JWT_EXPIRATION_DELTA = 604800  # 7 days (604800 seconds)
 
 # Encryption key for bank account tokens (must be 32 bytes base64-encoded)
 # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', 'default-key-32-chars-long!!')
+ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', 'FsangjvmTrRdkM599cmGDrmcAKXSZ4vqpVEsz0XGevQ=')
+
+# ============================================
+# PLAID CONFIGURATION
+# ============================================
+# Sign up at https://plaid.com/ to get your credentials
+# Use 'sandbox' for development, 'development' for testing with test accounts, 'production' for live
+PLAID_CLIENT_ID = os.getenv('PLAID_CLIENT_ID', '')
+PLAID_SECRET = os.getenv('PLAID_SECRET', '')
+PLAID_ENV = os.getenv('PLAID_ENV', 'sandbox')  # sandbox, development, or production
 
 # ============================================
 # SECURITY SETTINGS

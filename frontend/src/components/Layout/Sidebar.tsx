@@ -12,6 +12,9 @@ import {
   ChatBubbleLeftRightIcon,
   HeartIcon,
   Cog6ToothIcon,
+  SparklesIcon,
+  BellIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -21,6 +24,9 @@ const navigation = [
   { name: 'Investments', href: '/investments', icon: BuildingOfficeIcon },
   { name: 'Cards', href: '/cards', icon: CreditCardIcon },
   { name: 'Loans', href: '/loans', icon: BanknotesIcon },
+  { name: 'Goals', href: '/goals', icon: TrophyIcon },
+  { name: 'AI Insights', href: '/ai-insights', icon: SparklesIcon },
+  { name: 'Notifications', href: '/notifications', icon: BellIcon },
   { name: 'Chat bot', href: '/chatbot', icon: ChatBubbleLeftRightIcon },
   { name: 'My Privileges', href: '/privileges', icon: HeartIcon },
   { name: 'Setting', href: '/settings', icon: Cog6ToothIcon },
