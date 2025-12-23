@@ -1,0 +1,1045 @@
+================================================================================
+                    FUNDER - BUDGET MANAGEMENT SYSTEM
+                   ENTITY RELATIONSHIP DIAGRAM (ERD)
+================================================================================
+
+@startuml Database_ERD
+
+' ============================================================================
+'                       ENTITY DEFINITIONS WITH ATTRIBUTES
+' ============================================================================
+
+entity "users" as users {
+  * id : UUID <<PK>>
+  --
+  * username : VARCHAR(50) <<UNIQUE>>
+  * first_name : VARCHAR(50)
+  * last_name : VARCHAR(50)
+  * email : VARCHAR(100) <<UNIQUE>>
+  * password_hash : VARCHAR(255)
+  phone : VARCHAR(20) <<NULL>>
+  * status : ENUM('ACTIVE', 'INACTIVE')
+  * created_at : DATETIME
+}
+
+entity "admins" as admins {
+  * id : UUID <<PK>>
+  --
+  * email : VARCHAR(100) <<UNIQUE>>
+  * password_hash : VARCHAR(255)
+  * created_at : DATETIME
+}
+
+entity "categories" as categories {
+  * id : BINARY(16) <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * name : VARCHAR(50)
+  * type : ENUM('INCOME', 'EXPENSE')
+  * created_at : DATETIME
+  --
+  UNIQUE(user_id, name, type)
+}
+
+entity "bank_accounts" as bank_accounts {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  institution_name : VARCHAR(100) <<NULL>>
+  account_type : VARCHAR(50) <<NULL>>
+  * token : VARBINARY(500) <<ENCRYPTED>>
+  plaid_access_token : VARBINARY(500) <<ENCRYPTED, NULL>>
+  plaid_item_id : VARCHAR(100) <<NULL>>
+  plaid_account_id : VARCHAR(100) <<NULL>>
+  plaid_cursor : TEXT <<NULL>>
+  last_sync : DATETIME <<NULL>>
+  * auto_sync_enabled : BOOLEAN
+  * created_at : DATETIME
+}
+
+entity "transactions" as transactions {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  category_id : BINARY(16) <<FK, NULL>>
+  bank_account_id : UUID <<FK, NULL>>
+  * amount : DECIMAL(10,2)
+  * type : ENUM('INCOME', 'EXPENSE')
+  description : VARCHAR(255) <<NULL>>
+  merchant : VARCHAR(255) <<NULL>>
+  * date : DATE
+  * source : ENUM('MANUAL', 'SYNCED')
+  plaid_transaction_id : VARCHAR(100) <<UNIQUE, NULL>>
+  * flagged_fraud : BOOLEAN
+  * created_at : DATETIME
+  --
+  INDEX(user_id, date)
+  INDEX(category_id)
+}
+
+entity "budgets" as budgets {
+  * id : BINARY(16) <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * category_id : BINARY(16) <<FK>>
+  * period : ENUM('WEEKLY', 'MONTHLY')
+  * amount : DECIMAL(10,2)
+  * created_at : DATETIME
+  --
+  CHECK(amount >= 0)
+}
+
+entity "goals" as goals {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * title : VARCHAR(100)
+  * target_amount : DECIMAL(10,2)
+  * current_amount : DECIMAL(10,2)
+  deadline : DATE <<NULL>>
+  * created_at : DATETIME
+}
+
+entity "loans" as loans {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * lender_name : VARCHAR(100)
+  * amount : DECIMAL(12,2)
+  * term_months : INTEGER
+  * interest_rate : DECIMAL(5,2)
+  * status : ENUM('PENDING', 'APPROVED', 'REJECTED')
+  * created_at : DATETIME
+}
+
+entity "ai_alerts" as ai_alerts {
+  * id : BINARY(16) <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * message : TEXT
+  * type : ENUM('BUDGET_ALERT', 'SPENDING_PATTERN', 'FRAUD', 'GOAL_RECOMMENDATION', 'LOAN_REMINDER', 'GOAL_RISK')
+  * created_at : DATETIME
+  --
+  INDEX(user_id, created_at DESC)
+}
+
+entity "system_logs" as system_logs {
+  * id : BINARY(16) <<PK>>
+  --
+  user_id : UUID <<FK, NULL>>
+  admin_id : UUID <<FK, NULL>>
+  * action : VARCHAR(255)
+  details : TEXT <<NULL>>
+  * timestamp : DATETIME
+  --
+  INDEX(timestamp DESC)
+}
+
+entity "admin_actions" as admin_actions {
+  * id : BINARY(16) <<PK>>
+  --
+  * admin_id : UUID <<FK>>
+  target_user_id : UUID <<FK, NULL>>
+  transaction_id : UUID <<FK, NULL>>
+  * action : VARCHAR(255)
+  * timestamp : DATETIME
+  --
+  INDEX(admin_id, timestamp DESC)
+}
+
+' ============================================================================
+'                           RELATIONSHIPS
+' ============================================================================
+
+' User Relationships (1:N)
+users ||--o{ categories : "creates"
+users ||--o{ bank_accounts : "owns"
+users ||--o{ transactions : "performs"
+users ||--o{ budgets : "manages"
+users ||--o{ goals : "sets"
+users ||--o{ loans : "applies for"
+users ||--o{ ai_alerts : "receives"
+users ||--o{ system_logs : "logged by"
+users ||--o{ admin_actions : "target of"
+
+' Category Relationships (1:N)
+categories ||--o{ transactions : "categorizes"
+categories ||--o{ budgets : "tracks spending for"
+
+' Bank Account Relationships (1:N)
+bank_accounts ||--o{ transactions : "sources"
+
+' Admin Relationships (1:N)
+admins ||--o{ system_logs : "creates"
+admins ||--o{ admin_actions : "performs"
+
+' Transaction Relationships (1:N)
+transactions ||--o{ admin_actions : "reviewed in"
+
+@enduml
+
+
+' ============================================================================
+'                    DETAILED ERD WITH CARDINALITY
+' ============================================================================
+
+@startuml Detailed_ERD
+
+skinparam linetype ortho
+
+!define PK <&key> 
+!define FK <&link-intact>
+
+entity "users" as users {
+  PK id : UUID
+  ==
+  username : VARCHAR(50) UNIQUE
+  first_name : VARCHAR(50)
+  last_name : VARCHAR(50)
+  email : VARCHAR(100) UNIQUE
+  password_hash : VARCHAR(255)
+  phone : VARCHAR(20) NULL
+  status : VARCHAR(10)
+  created_at : DATETIME
+}
+
+entity "admins" as admins {
+  PK id : UUID
+  ==
+  email : VARCHAR(100) UNIQUE
+  password_hash : VARCHAR(255)
+  created_at : DATETIME
+}
+
+entity "categories" as categories {
+  PK id : BINARY(16)
+  ==
+  FK user_id : UUID
+  name : VARCHAR(50)
+  type : VARCHAR(10)
+  created_at : DATETIME
+}
+
+entity "bank_accounts" as bank_accounts {
+  PK id : UUID
+  ==
+  FK user_id : UUID
+  institution_name : VARCHAR(100)
+  account_type : VARCHAR(50)
+  token : VARBINARY(500) ENCRYPTED
+  plaid_access_token : VARBINARY(500)
+  plaid_item_id : VARCHAR(100)
+  plaid_account_id : VARCHAR(100)
+  plaid_cursor : TEXT
+  last_sync : DATETIME
+  auto_sync_enabled : BOOLEAN
+  created_at : DATETIME
+}
+
+entity "transactions" as transactions {
+  PK id : UUID
+  ==
+  FK user_id : UUID
+  FK category_id : BINARY(16) NULL
+  FK bank_account_id : UUID NULL
+  amount : DECIMAL(10,2)
+  type : VARCHAR(10)
+  description : VARCHAR(255)
+  merchant : VARCHAR(255)
+  date : DATE
+  source : VARCHAR(10)
+  plaid_transaction_id : VARCHAR(100)
+  flagged_fraud : BOOLEAN
+  created_at : DATETIME
+}
+
+entity "budgets" as budgets {
+  PK id : BINARY(16)
+  ==
+  FK user_id : UUID
+  FK category_id : BINARY(16)
+  period : VARCHAR(10)
+  amount : DECIMAL(10,2)
+  created_at : DATETIME
+}
+
+entity "goals" as goals {
+  PK id : UUID
+  ==
+  FK user_id : UUID
+  title : VARCHAR(100)
+  target_amount : DECIMAL(10,2)
+  current_amount : DECIMAL(10,2)
+  deadline : DATE
+  created_at : DATETIME
+}
+
+entity "loans" as loans {
+  PK id : UUID
+  ==
+  FK user_id : UUID
+  lender_name : VARCHAR(100)
+  amount : DECIMAL(12,2)
+  term_months : INTEGER
+  interest_rate : DECIMAL(5,2)
+  status : VARCHAR(12)
+  created_at : DATETIME
+}
+
+entity "ai_alerts" as ai_alerts {
+  PK id : BINARY(16)
+  ==
+  FK user_id : UUID
+  message : TEXT
+  type : VARCHAR(30)
+  created_at : DATETIME
+}
+
+entity "system_logs" as system_logs {
+  PK id : BINARY(16)
+  ==
+  FK user_id : UUID NULL
+  FK admin_id : UUID NULL
+  action : VARCHAR(255)
+  details : TEXT
+  timestamp : DATETIME
+}
+
+entity "admin_actions" as admin_actions {
+  PK id : BINARY(16)
+  ==
+  FK admin_id : UUID
+  FK target_user_id : UUID NULL
+  FK transaction_id : UUID NULL
+  action : VARCHAR(255)
+  timestamp : DATETIME
+}
+
+' Cardinality: User to other entities (One-to-Many)
+users ||--|{ categories : "1 user creates N categories"
+users ||--|{ bank_accounts : "1 user owns N bank accounts"
+users ||--|{ transactions : "1 user has N transactions"
+users ||--|{ budgets : "1 user manages N budgets"
+users ||--|{ goals : "1 user sets N goals"
+users ||--|{ loans : "1 user applies N loans"
+users ||--|{ ai_alerts : "1 user receives N alerts"
+users ||--o{ system_logs : "1 user may have N logs"
+users ||--o{ admin_actions : "1 user may be target of N actions"
+
+' Category relationships
+categories ||--o{ transactions : "1 category has N transactions"
+categories ||--|{ budgets : "1 category has N budgets"
+
+' Bank Account relationships
+bank_accounts ||--o{ transactions : "1 bank account sources N transactions"
+
+' Admin relationships
+admins ||--|{ system_logs : "1 admin creates N logs"
+admins ||--|{ admin_actions : "1 admin performs N actions"
+
+' Transaction relationships
+transactions ||--o{ admin_actions : "1 transaction may be in N admin actions"
+
+@enduml
+
+
+' ============================================================================
+'                    CROW'S FOOT NOTATION ERD
+' ============================================================================
+
+@startuml Crows_Foot_ERD
+
+' Entities with Crow's Foot notation
+
+entity users {
+  * id : UUID
+  --
+  username : VARCHAR(50)
+  email : VARCHAR(100)
+  password_hash : VARCHAR(255)
+  first_name : VARCHAR(50)
+  last_name : VARCHAR(50)
+  phone : VARCHAR(20)
+  status : VARCHAR(10)
+  created_at : DATETIME
+}
+
+entity categories {
+  * id : BINARY(16)
+  --
+  user_id : UUID
+  name : VARCHAR(50)
+  type : VARCHAR(10)
+  created_at : DATETIME
+}
+
+entity transactions {
+  * id : UUID
+  --
+  user_id : UUID
+  category_id : BINARY(16)
+  bank_account_id : UUID
+  amount : DECIMAL(10,2)
+  type : VARCHAR(10)
+  description : VARCHAR(255)
+  merchant : VARCHAR(255)
+  date : DATE
+  source : VARCHAR(10)
+  flagged_fraud : BOOLEAN
+  created_at : DATETIME
+}
+
+entity budgets {
+  * id : BINARY(16)
+  --
+  user_id : UUID
+  category_id : BINARY(16)
+  period : VARCHAR(10)
+  amount : DECIMAL(10,2)
+  created_at : DATETIME
+}
+
+entity goals {
+  * id : UUID
+  --
+  user_id : UUID
+  title : VARCHAR(100)
+  target_amount : DECIMAL(10,2)
+  current_amount : DECIMAL(10,2)
+  deadline : DATE
+  created_at : DATETIME
+}
+
+entity loans {
+  * id : UUID
+  --
+  user_id : UUID
+  lender_name : VARCHAR(100)
+  amount : DECIMAL(12,2)
+  term_months : INTEGER
+  interest_rate : DECIMAL(5,2)
+  status : VARCHAR(12)
+  created_at : DATETIME
+}
+
+entity bank_accounts {
+  * id : UUID
+  --
+  user_id : UUID
+  institution_name : VARCHAR(100)
+  token : VARBINARY(500)
+  plaid_access_token : VARBINARY(500)
+  plaid_item_id : VARCHAR(100)
+  created_at : DATETIME
+}
+
+entity ai_alerts {
+  * id : BINARY(16)
+  --
+  user_id : UUID
+  message : TEXT
+  type : VARCHAR(30)
+  created_at : DATETIME
+}
+
+entity admins {
+  * id : UUID
+  --
+  email : VARCHAR(100)
+  password_hash : VARCHAR(255)
+  created_at : DATETIME
+}
+
+entity system_logs {
+  * id : BINARY(16)
+  --
+  user_id : UUID
+  admin_id : UUID
+  action : VARCHAR(255)
+  details : TEXT
+  timestamp : DATETIME
+}
+
+entity admin_actions {
+  * id : BINARY(16)
+  --
+  admin_id : UUID
+  target_user_id : UUID
+  transaction_id : UUID
+  action : VARCHAR(255)
+  timestamp : DATETIME
+}
+
+' Relationships with Crow's Foot notation
+' ||--o{ means: one-to-zero-or-many (mandatory on left, optional on right)
+' ||--|| means: one-to-one (mandatory both sides)
+' ||--o| means: one-to-zero-or-one (mandatory on left, optional on right)
+' }o--o{ means: many-to-many (optional both sides)
+
+users ||--o{ categories
+users ||--o{ transactions
+users ||--o{ budgets
+users ||--o{ goals
+users ||--o{ loans
+users ||--o{ bank_accounts
+users ||--o{ ai_alerts
+users ||--o{ system_logs
+
+categories ||--o{ transactions
+categories ||--o{ budgets
+
+bank_accounts ||--o{ transactions
+
+admins ||--o{ system_logs
+admins ||--o{ admin_actions
+
+users ||--o{ admin_actions
+transactions ||--o{ admin_actions
+
+@enduml
+
+
+' ============================================================================
+'                    DATABASE SCHEMA SQL REPRESENTATION
+' ============================================================================
+
+-- ============================================================================
+-- USERS AND AUTHENTICATION TABLES
+-- ============================================================================
+
+CREATE TABLE users (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    username          VARCHAR(50) UNIQUE NOT NULL,
+    first_name        VARCHAR(50) NOT NULL,
+    last_name         VARCHAR(50) NOT NULL,
+    email             VARCHAR(100) UNIQUE NOT NULL,
+    password_hash     VARCHAR(255) NOT NULL,            -- bcrypt hashed
+    phone             VARCHAR(20) NULL,
+    status            ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    created_at        DATETIME NOT NULL DEFAULT NOW(),
+    
+    INDEX idx_email (email),
+    INDEX idx_username (username),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE admins (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    email             VARCHAR(100) UNIQUE NOT NULL,
+    password_hash     VARCHAR(255) NOT NULL,            -- bcrypt hashed
+    created_at        DATETIME NOT NULL DEFAULT NOW(),
+    
+    INDEX idx_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- FINANCIAL DATA TABLES
+-- ============================================================================
+
+CREATE TABLE categories (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    user_id           BINARY(16) NOT NULL,
+    name              VARCHAR(50) NOT NULL,
+    type              ENUM('INCOME', 'EXPENSE') NOT NULL,
+    created_at        DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_category (user_id, name, type),
+    INDEX idx_user_type (user_id, type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE bank_accounts (
+    id                    BINARY(16) PRIMARY KEY,       -- UUID stored as binary
+    user_id               BINARY(16) NOT NULL,
+    institution_name      VARCHAR(100) NULL,
+    account_type          VARCHAR(50) NULL,
+    token                 VARBINARY(500) NOT NULL,      -- Fernet encrypted
+    plaid_access_token    VARBINARY(500) NULL,          -- Fernet encrypted
+    plaid_item_id         VARCHAR(100) NULL,
+    plaid_account_id      VARCHAR(100) NULL,
+    plaid_cursor          TEXT NULL,
+    last_sync             DATETIME NULL,
+    auto_sync_enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at            DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_plaid_item (plaid_item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE transactions (
+    id                    BINARY(16) PRIMARY KEY,       -- UUID stored as binary
+    user_id               BINARY(16) NOT NULL,
+    category_id           BINARY(16) NULL,
+    bank_account_id       BINARY(16) NULL,
+    amount                DECIMAL(10,2) NOT NULL,
+    type                  ENUM('INCOME', 'EXPENSE') NOT NULL,
+    description           VARCHAR(255) NULL,
+    merchant              VARCHAR(255) NULL,
+    date                  DATE NOT NULL,
+    source                ENUM('MANUAL', 'SYNCED') NOT NULL DEFAULT 'MANUAL',
+    plaid_transaction_id  VARCHAR(100) UNIQUE NULL,
+    flagged_fraud         BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at            DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE SET NULL,
+    
+    INDEX idx_user_date (user_id, date DESC),
+    INDEX idx_category (category_id),
+    INDEX idx_bank_account (bank_account_id),
+    INDEX idx_type (type),
+    INDEX idx_flagged (flagged_fraud),
+    INDEX idx_source (source)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE budgets (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    user_id           BINARY(16) NOT NULL,
+    category_id       BINARY(16) NOT NULL,
+    period            ENUM('WEEKLY', 'MONTHLY') NOT NULL,
+    amount            DECIMAL(10,2) NOT NULL,
+    created_at        DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+    
+    CHECK (amount >= 0),
+    INDEX idx_user_period (user_id, period)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE goals (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    user_id           BINARY(16) NOT NULL,
+    title             VARCHAR(100) NOT NULL,
+    target_amount     DECIMAL(10,2) NOT NULL,
+    current_amount    DECIMAL(10,2) NOT NULL DEFAULT 0,
+    deadline          DATE NULL,
+    created_at        DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_deadline (user_id, deadline),
+    INDEX idx_created (created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE loans (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    user_id           BINARY(16) NOT NULL,
+    lender_name       VARCHAR(100) NOT NULL DEFAULT 'Funder Bank',
+    amount            DECIMAL(12,2) NOT NULL,
+    term_months       INTEGER NOT NULL,
+    interest_rate     DECIMAL(5,2) NOT NULL DEFAULT 0.0,
+    status            ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+    created_at        DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_status (user_id, status),
+    INDEX idx_created (created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- AI AND MONITORING TABLES
+-- ============================================================================
+
+CREATE TABLE ai_alerts (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    user_id           BINARY(16) NOT NULL,
+    message           TEXT NOT NULL,
+    type              ENUM('BUDGET_ALERT', 'SPENDING_PATTERN', 'FRAUD', 
+                          'GOAL_RECOMMENDATION', 'LOAN_REMINDER', 'GOAL_RISK') NOT NULL,
+    created_at        DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_created (user_id, created_at DESC),
+    INDEX idx_type (type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE system_logs (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    user_id           BINARY(16) NULL,
+    admin_id          BINARY(16) NULL,
+    action            VARCHAR(255) NOT NULL,
+    details           TEXT NULL,
+    timestamp         DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE SET NULL,
+    INDEX idx_timestamp (timestamp DESC),
+    INDEX idx_user (user_id),
+    INDEX idx_admin (admin_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE admin_actions (
+    id                BINARY(16) PRIMARY KEY,           -- UUID stored as binary
+    admin_id          BINARY(16) NOT NULL,
+    target_user_id    BINARY(16) NULL,
+    transaction_id    BINARY(16) NULL,
+    action            VARCHAR(255) NOT NULL,
+    timestamp         DATETIME NOT NULL DEFAULT NOW(),
+    
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL,
+    
+    INDEX idx_admin_timestamp (admin_id, timestamp DESC),
+    INDEX idx_target_user (target_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+' ============================================================================
+'                    RELATIONSHIP MATRIX
+' ============================================================================
+
+RELATIONSHIP CARDINALITY MATRIX:
+=================================
+
+┌─────────────────┬──────────────┬─────────────┬────────────────────────────┐
+│ Parent Entity   │ Child Entity │ Cardinality │ Relationship Type          │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ categories   │ 1:N         │ One user creates many      │
+│                 │              │             │ categories                 │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ bank_accounts│ 1:N         │ One user owns many bank    │
+│                 │              │             │ accounts                   │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ transactions │ 1:N         │ One user has many          │
+│                 │              │             │ transactions               │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ budgets      │ 1:N         │ One user manages many      │
+│                 │              │             │ budgets                    │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ goals        │ 1:N         │ One user sets many goals   │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ loans        │ 1:N         │ One user applies for many  │
+│                 │              │             │ loans                      │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ ai_alerts    │ 1:N         │ One user receives many     │
+│                 │              │             │ AI alerts                  │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ system_logs  │ 1:N         │ One user has many log      │
+│                 │              │ (optional)  │ entries (optional)         │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ users           │ admin_actions│ 1:N         │ One user may be target of  │
+│                 │              │ (optional)  │ many admin actions         │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ categories      │ transactions │ 1:N         │ One category has many      │
+│                 │              │ (optional)  │ transactions (optional FK) │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ categories      │ budgets      │ 1:N         │ One category has many      │
+│                 │              │             │ budget entries             │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ bank_accounts   │ transactions │ 1:N         │ One bank account sources   │
+│                 │              │ (optional)  │ many transactions          │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ admins          │ system_logs  │ 1:N         │ One admin creates many log │
+│                 │              │ (optional)  │ entries                    │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ admins          │ admin_actions│ 1:N         │ One admin performs many    │
+│                 │              │             │ actions                    │
+├─────────────────┼──────────────┼─────────────┼────────────────────────────┤
+│ transactions    │ admin_actions│ 1:N         │ One transaction may be     │
+│                 │              │ (optional)  │ subject of many admin      │
+│                 │              │             │ actions                    │
+└─────────────────┴──────────────┴─────────────┴────────────────────────────┘
+
+
+' ============================================================================
+'                    FOREIGN KEY CONSTRAINTS SUMMARY
+' ============================================================================
+
+FOREIGN KEY CONSTRAINTS:
+========================
+
+1. categories.user_id → users.id
+   ON DELETE CASCADE
+   (When user is deleted, all their categories are deleted)
+
+2. bank_accounts.user_id → users.id
+   ON DELETE CASCADE
+   (When user is deleted, all their bank accounts are deleted)
+
+3. transactions.user_id → users.id
+   ON DELETE CASCADE
+   (When user is deleted, all their transactions are deleted)
+
+4. transactions.category_id → categories.id
+   ON DELETE SET NULL
+   (When category is deleted, transaction remains but category_id = NULL)
+
+5. transactions.bank_account_id → bank_accounts.id
+   ON DELETE SET NULL
+   (When bank account is deleted, transaction remains but bank_account_id = NULL)
+
+6. budgets.user_id → users.id
+   ON DELETE CASCADE
+   (When user is deleted, all their budgets are deleted)
+
+7. budgets.category_id → categories.id
+   ON DELETE CASCADE
+   (When category is deleted, all budgets for that category are deleted)
+
+8. goals.user_id → users.id
+   ON DELETE CASCADE
+   (When user is deleted, all their goals are deleted)
+
+9. loans.user_id → users.id
+   ON DELETE CASCADE
+   (When user is deleted, all their loans are deleted)
+
+10. ai_alerts.user_id → users.id
+    ON DELETE CASCADE
+    (When user is deleted, all their AI alerts are deleted)
+
+11. system_logs.user_id → users.id
+    ON DELETE SET NULL
+    (When user is deleted, logs remain but user_id = NULL)
+
+12. system_logs.admin_id → admins.id
+    ON DELETE SET NULL
+    (When admin is deleted, logs remain but admin_id = NULL)
+
+13. admin_actions.admin_id → admins.id
+    ON DELETE CASCADE
+    (When admin is deleted, all their actions are deleted)
+
+14. admin_actions.target_user_id → users.id
+    ON DELETE SET NULL
+    (When user is deleted, actions remain but target_user_id = NULL)
+
+15. admin_actions.transaction_id → transactions.id
+    ON DELETE SET NULL
+    (When transaction is deleted, actions remain but transaction_id = NULL)
+
+
+' ============================================================================
+'                    INDEX STRATEGY
+' ============================================================================
+
+INDEXES FOR PERFORMANCE OPTIMIZATION:
+======================================
+
+1. USERS TABLE:
+   - PRIMARY KEY (id)
+   - UNIQUE INDEX (email)
+   - UNIQUE INDEX (username)
+   - INDEX (status)
+
+2. ADMINS TABLE:
+   - PRIMARY KEY (id)
+   - UNIQUE INDEX (email)
+
+3. CATEGORIES TABLE:
+   - PRIMARY KEY (id)
+   - UNIQUE COMPOSITE INDEX (user_id, name, type)
+   - INDEX (user_id, type)
+
+4. BANK_ACCOUNTS TABLE:
+   - PRIMARY KEY (id)
+   - INDEX (user_id)
+   - INDEX (plaid_item_id)
+
+5. TRANSACTIONS TABLE:
+   - PRIMARY KEY (id)
+   - UNIQUE INDEX (plaid_transaction_id)
+   - COMPOSITE INDEX (user_id, date DESC) -- Most common query
+   - INDEX (category_id)
+   - INDEX (bank_account_id)
+   - INDEX (type)
+   - INDEX (flagged_fraud)
+   - INDEX (source)
+
+6. BUDGETS TABLE:
+   - PRIMARY KEY (id)
+   - COMPOSITE INDEX (user_id, period)
+
+7. GOALS TABLE:
+   - PRIMARY KEY (id)
+   - COMPOSITE INDEX (user_id, deadline)
+   - INDEX (created_at DESC)
+
+8. LOANS TABLE:
+   - PRIMARY KEY (id)
+   - COMPOSITE INDEX (user_id, status)
+   - INDEX (created_at DESC)
+
+9. AI_ALERTS TABLE:
+   - PRIMARY KEY (id)
+   - COMPOSITE INDEX (user_id, created_at DESC) -- For retrieving user's alerts
+   - INDEX (type)
+
+10. SYSTEM_LOGS TABLE:
+    - PRIMARY KEY (id)
+    - INDEX (timestamp DESC)
+    - INDEX (user_id)
+    - INDEX (admin_id)
+
+11. ADMIN_ACTIONS TABLE:
+    - PRIMARY KEY (id)
+    - COMPOSITE INDEX (admin_id, timestamp DESC)
+    - INDEX (target_user_id)
+
+
+' ============================================================================
+'                    DATA INTEGRITY CONSTRAINTS
+' ============================================================================
+
+CONSTRAINTS AND VALIDATIONS:
+=============================
+
+1. UNIQUE CONSTRAINTS:
+   - users.email (UNIQUE)
+   - users.username (UNIQUE)
+   - admins.email (UNIQUE)
+   - categories: UNIQUE(user_id, name, type)
+   - transactions.plaid_transaction_id (UNIQUE)
+
+2. CHECK CONSTRAINTS:
+   - budgets.amount >= 0 (Non-negative amount)
+
+3. ENUM CONSTRAINTS:
+   - users.status: 'ACTIVE', 'INACTIVE'
+   - categories.type: 'INCOME', 'EXPENSE'
+   - transactions.type: 'INCOME', 'EXPENSE'
+   - transactions.source: 'MANUAL', 'SYNCED'
+   - budgets.period: 'WEEKLY', 'MONTHLY'
+   - loans.status: 'PENDING', 'APPROVED', 'REJECTED'
+   - ai_alerts.type: 'BUDGET_ALERT', 'SPENDING_PATTERN', 'FRAUD', 
+                     'GOAL_RECOMMENDATION', 'LOAN_REMINDER', 'GOAL_RISK'
+
+4. NOT NULL CONSTRAINTS:
+   - All id fields (PRIMARY KEYS)
+   - All foreign keys (except where explicitly NULL allowed)
+   - Critical business fields (email, password_hash, amount, etc.)
+
+5. DEFAULT VALUES:
+   - created_at fields: DEFAULT NOW()
+   - users.status: DEFAULT 'ACTIVE'
+   - transactions.source: DEFAULT 'MANUAL'
+   - transactions.flagged_fraud: DEFAULT FALSE
+   - bank_accounts.auto_sync_enabled: DEFAULT TRUE
+   - goals.current_amount: DEFAULT 0
+   - loans.interest_rate: DEFAULT 0.0
+   - loans.status: DEFAULT 'PENDING'
+
+
+' ============================================================================
+'                    ENCRYPTION & SECURITY
+' ============================================================================
+
+ENCRYPTED FIELDS:
+=================
+
+1. PASSWORD STORAGE:
+   - users.password_hash: bcrypt hashed (cost factor 12)
+   - admins.password_hash: bcrypt hashed (cost factor 12)
+
+2. TOKEN ENCRYPTION:
+   - bank_accounts.token: Fernet symmetric encryption
+   - bank_accounts.plaid_access_token: Fernet symmetric encryption
+
+3. AUTHENTICATION:
+   - JWT tokens with 7-day expiry
+   - Token stored in client localStorage
+   - Token validated on each API request
+
+
+' ============================================================================
+'                    NORMALIZED FORM ANALYSIS
+' ============================================================================
+
+DATABASE NORMALIZATION STATUS:
+==============================
+
+FIRST NORMAL FORM (1NF): ✓ SATISFIED
+- All attributes contain atomic values
+- No repeating groups
+- Each table has a primary key
+
+SECOND NORMAL FORM (2NF): ✓ SATISFIED
+- All 1NF requirements met
+- No partial dependencies (all non-key attributes depend on entire primary key)
+- Composite keys properly designed (e.g., categories unique constraint)
+
+THIRD NORMAL FORM (3NF): ✓ SATISFIED
+- All 2NF requirements met
+- No transitive dependencies
+- All non-key attributes depend only on primary key
+
+BOYCE-CODD NORMAL FORM (BCNF): ✓ SATISFIED
+- All 3NF requirements met
+- Every determinant is a candidate key
+
+DENORMALIZATION CONSIDERATIONS:
+- No intentional denormalization
+- All calculated fields (e.g., goal progress_percentage) computed at runtime
+- Budget spending status calculated via aggregation queries
+
+
+' ============================================================================
+'                    ENTITY DESCRIPTIONS
+' ============================================================================
+
+ENTITY PURPOSE AND RELATIONSHIPS:
+==================================
+
+1. USERS
+   Purpose: Core entity storing user account information
+   Relationships: Parent to all user-owned entities
+   Authentication: bcrypt password hashing, JWT token generation
+
+2. ADMINS
+   Purpose: Administrative user accounts with elevated privileges
+   Relationships: Parent to system_logs and admin_actions
+   Authentication: Separate from regular users, bcrypt hashing
+
+3. CATEGORIES
+   Purpose: User-defined transaction and budget categories
+   Relationships: Child of users, parent to transactions and budgets
+   Business Rule: Each user can have unique category names per type
+
+4. BANK_ACCOUNTS
+   Purpose: Linked bank accounts for transaction sync
+   Relationships: Child of users, parent to transactions
+   Security: Encrypted tokens for API access
+   Integration: Plaid API for bank connections
+
+5. TRANSACTIONS
+   Purpose: Financial transactions (income/expenses)
+   Relationships: Child of users, categories, bank_accounts
+   Features: AI fraud detection, manual or synced source
+
+6. BUDGETS
+   Purpose: User-defined spending limits per category
+   Relationships: Child of users and categories
+   Features: Weekly/monthly periods, strategy pattern calculations
+
+7. GOALS
+   Purpose: Financial savings goals with targets
+   Relationships: Child of users
+   Features: Progress tracking, deadline monitoring
+
+8. LOANS
+   Purpose: Loan applications and management
+   Relationships: Child of users
+   Features: Interest calculation strategies, approval workflow
+
+9. AI_ALERTS
+   Purpose: AI-generated notifications and insights
+   Relationships: Child of users
+   Features: Multiple alert types, triggered by observers
+
+10. SYSTEM_LOGS
+    Purpose: Audit trail for system actions
+    Relationships: Optional child of users and admins
+    Features: Comprehensive action logging
+
+11. ADMIN_ACTIONS
+    Purpose: Track administrative actions on users/transactions
+    Relationships: Child of admins, optional references to users/transactions
+    Features: Accountability and audit trail
+
+
+================================================================================
+                              END OF ERD DOCUMENTATION
+================================================================================
