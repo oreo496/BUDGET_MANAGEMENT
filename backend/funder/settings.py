@@ -219,6 +219,27 @@ JWT_EXPIRATION_DELTA = 604800  # 7 days (604800 seconds)
 # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', 'FsangjvmTrRdkM599cmGDrmcAKXSZ4vqpVEsz0XGevQ=')
 
+# Email settings: env override takes precedence (works in DEBUG too)
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND') or (
+    'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend'
+)
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False') == 'True'
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
+
+# Base URL used in verification links (defaults to backend local)
+VERIFICATION_BASE_URL = os.getenv('VERIFICATION_BASE_URL', 'http://localhost:8000')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@example.com')
+# ============================================
+# SMS OTP CONFIGURATION (Twilio)
+# ============================================
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')
+TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')  # Your Twilio number
 # ============================================
 # PLAID CONFIGURATION
 # ============================================

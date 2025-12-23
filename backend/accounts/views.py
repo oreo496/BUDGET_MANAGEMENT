@@ -9,6 +9,7 @@ from utils.security import sanitize_input, validate_email, sanitize_sql_input
 import jwt
 from django.conf import settings
 from datetime import datetime, timedelta
+import secrets
 
 
 @api_view(['POST'])
