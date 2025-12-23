@@ -8,7 +8,6 @@ from rest_framework.response import Response
 from utils.strategies import (
     AuthenticationContext,
     PasswordAuthenticationStrategy,
-    MFAAuthenticationStrategy,
     TokenAuthenticationStrategy
 )
 import jwt
@@ -21,18 +20,16 @@ from datetime import datetime, timedelta
 def login_with_strategy(request):
     """
     Enhanced login using Strategy pattern for flexible authentication.
-    Supports password-only and MFA authentication.
+    Supports password authentication.
     
     POST /api/auth/login-strategy/
     Body: {
         "email": "user@example.com",
-        "password": "password123",
-        "mfa_token": "123456"  // optional, required if MFA enabled
+        "password": "password123"
     }
     """
     email = request.data.get('email')
     password = request.data.get('password')
-    mfa_token = request.data.get('mfa_token')
     
     if not email or not password:
         return Response(
@@ -40,28 +37,17 @@ def login_with_strategy(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Use MFA strategy (handles both MFA and non-MFA users)
-    auth_context = AuthenticationContext(MFAAuthenticationStrategy())
+    # Use password strategy
+    auth_context = AuthenticationContext(PasswordAuthenticationStrategy())
     result = auth_context.authenticate(
         email=email,
-        password=password,
-        mfa_token=mfa_token
+        password=password
     )
     
     if not result:
         return Response(
             {'detail': 'Invalid credentials.'},
             status=status.HTTP_401_UNAUTHORIZED
-        )
-    
-    # Check if MFA is required but not provided
-    if result.get('requires_mfa'):
-        return Response(
-            {
-                'requires_mfa': True,
-                'message': 'MFA token required. Please provide your 6-digit code.'
-            },
-            status=status.HTTP_200_OK
         )
     
     # Generate JWT token

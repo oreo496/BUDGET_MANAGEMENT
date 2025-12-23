@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
@@ -42,15 +43,25 @@ export default function RegisterPage() {
         email,
         password,
       });
-      router.push('/login');
+      // Show success message
+      setSuccess('Account created successfully! Redirecting to login...');
+      setError(null);
+      // Redirect after a short delay
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
     } catch (err: any) {
       const errorData = err?.response?.data;
-      if (typeof errorData === 'string') {
-        setError(errorData);
-      } else if (errorData?.detail) {
-        setError(errorData.detail);
+      if (errorData?.error) {
+        setError(errorData.error);
+      } else if (errorData?.username) {
+        setError('This username is already taken. Please choose a different username.');
       } else if (errorData?.email) {
         setError('This email address is already registered. Please use a different email or try logging in.');
+      } else if (errorData?.detail) {
+        setError(errorData.detail);
+      } else if (typeof errorData === 'string') {
+        setError(errorData);
       } else {
         setError('Registration failed. Please try again.');
       }
@@ -110,6 +121,18 @@ export default function RegisterPage() {
               </svg>
               <div className="flex-1">
                 <p className="text-sm font-medium text-red-800">{typeof error === 'string' ? error : 'Registration failed'}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-800">{success}</p>
               </div>
             </div>
           </div>

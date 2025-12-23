@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
@@ -13,16 +13,20 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    // Clear any old error messages when page loads
+    setError(null);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const payload: Record<string, string> = { password };
-      if (identifier.includes('@')) {
-        payload.email = identifier;
-      }
-      payload.username = identifier;
+      const payload: Record<string, string> = { 
+        identifier,
+        password 
+      };
 
       const res = await api.post('/auth/login/', payload);
 
@@ -32,17 +36,12 @@ export default function LoginPage() {
       }
       router.push('/');
     } catch (err: any) {
-      const status = err?.response?.status;
       const errorData = err?.response?.data;
       
-      if (errorData?.error) {
-        setError(errorData.error);
-      } else if (errorData?.detail) {
-        setError(errorData.detail);
-      } else if (err?.message?.includes('Network Error')) {
+      if (err?.message?.includes('Network Error')) {
         setError('Unable to connect to server. Please ensure the backend is running.');
       } else {
-        setError('Login failed. Please check your credentials and try again.');
+        setError('Invalid credentials. Please check your username/email and password.');
       }
     } finally {
       setLoading(false);

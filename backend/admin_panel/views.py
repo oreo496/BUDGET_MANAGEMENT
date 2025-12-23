@@ -90,7 +90,6 @@ def list_users(request):
         'is_active': user.status == 'ACTIVE',
         'created_at': user.created_at.isoformat(),
         'phone': user.phone,
-        'two_factor_enabled': user.two_factor_enabled,
     } for user in users]
     return Response(users_data, status=status.HTTP_200_OK)
 

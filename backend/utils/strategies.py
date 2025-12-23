@@ -249,37 +249,7 @@ class PasswordAuthenticationStrategy(AuthenticationStrategy):
         return None
 
 
-class MFAAuthenticationStrategy(AuthenticationStrategy):
-    """Multi-factor authentication strategy."""
-    
-    def authenticate(self, email: str, password: str, mfa_token: str = None, **kwargs) -> Optional[Dict[str, Any]]:
-        """Authenticate using email, password, and MFA token."""
-        from accounts.models import User
-        from accounts.mfa_utils import verify_totp_token
-        
-        try:
-            user = User.objects.get(email=email)
-            
-            # First verify password
-            if not user.check_password(password):
-                return None
-            
-            # If MFA enabled, verify token
-            if user.two_factor_enabled:
-                if not mfa_token:
-                    return {'requires_mfa': True, 'user_id': str(user.id)}
-                
-                if not verify_totp_token(user.two_factor_secret, mfa_token):
-                    return None
-            
-            return {
-                'user_id': str(user.id),
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name
-            }
-        except User.DoesNotExist:
-            return None
+
 
 
 class TokenAuthenticationStrategy(AuthenticationStrategy):
