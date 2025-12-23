@@ -11,9 +11,6 @@ class User(models.Model):
     email = models.EmailField(unique=True, max_length=100)
     password_hash = models.CharField(max_length=255)
     phone = models.CharField(max_length=20, blank=True, null=True)
-    two_factor_enabled = models.BooleanField(default=False)
-    two_factor_secret = models.CharField(max_length=32, blank=True, null=True)  # TOTP secret
-    backup_codes = models.TextField(blank=True, null=True)  # JSON array of backup codes
     status = models.CharField(
         max_length=10,
         choices=[('ACTIVE', 'Active'), ('INACTIVE', 'Inactive')],

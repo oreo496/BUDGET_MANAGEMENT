@@ -6,8 +6,6 @@ django-cors-headers==4.3.1
 bcrypt==4.1.1
 PyJWT==2.8.0
 cryptography==41.0.7
-pyotp==2.9.0
-qrcode==7.4.2
 plaid-python==16.0.0
 requests==2.31.0
 pytorch-tabnet==4.1.0

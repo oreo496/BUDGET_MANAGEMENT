@@ -4,7 +4,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from .models import User, Admin
 from .serializers import UserSerializer
-from .mfa_utils import verify_totp_token, verify_backup_code
 from utils.security import sanitize_input, validate_email, sanitize_sql_input
 import jwt
 from django.conf import settings
@@ -115,8 +114,6 @@ def login(request):
         max_length=100
     )
     password = request.data.get('password')
-    mfa_token = sanitize_input(request.data.get('mfa_token', ''), max_length=6)
-    backup_code = sanitize_input(request.data.get('backup_code', ''), max_length=8)
 
     if not username_or_email or not password:
         return Response(
@@ -143,34 +140,6 @@ def login(request):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        # Check if MFA is enabled
-        if user.two_factor_enabled:
-            # If MFA token not provided, request it
-            if not mfa_token and not backup_code:
-                return Response({
-                    'mfa_required': True,
-                    'message': 'MFA token required'
-                }, status=status.HTTP_200_OK)
-            
-            # Verify MFA token or backup code
-            mfa_valid = False
-            
-            if mfa_token:
-                mfa_valid = verify_totp_token(user.two_factor_secret, mfa_token)
-            
-            if not mfa_valid and backup_code:
-                is_valid, updated_codes = verify_backup_code(user.backup_codes, backup_code)
-                if is_valid:
-                    user.backup_codes = updated_codes
-                    user.save()
-                    mfa_valid = True
-            
-            if not mfa_valid:
-                return Response(
-                    {'error': 'Invalid MFA token or backup code'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-        
         # Generate JWT token
         token = jwt.encode(
             {
@@ -183,8 +152,7 @@ def login(request):
         )
         return Response({
             'token': token,
-            'user': UserSerializer(user).data,
-            'mfa_enabled': user.two_factor_enabled
+            'user': UserSerializer(user).data
         }, status=status.HTTP_200_OK)
         
     except User.DoesNotExist:
