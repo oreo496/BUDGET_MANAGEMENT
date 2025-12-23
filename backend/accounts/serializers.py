@@ -12,7 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'phone', 
-                  'two_factor_enabled', 'sms_otp_enabled', 'status', 'created_at', 'password',
+                  'two_factor_enabled', 'status', 'created_at', 'password',
                   'two_factor_secret', 'backup_codes']
         read_only_fields = ['id', 'created_at', 'two_factor_secret', 'backup_codes']
         extra_kwargs = {

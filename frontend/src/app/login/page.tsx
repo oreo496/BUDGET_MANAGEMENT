@@ -13,8 +13,6 @@ export default function LoginPage() {
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaToken, setMfaToken] = useState('');
   const [backupCode, setBackupCode] = useState('');
-  const [smsOtpRequired, setSmsOtpRequired] = useState(false);
-  const [smsOtpCode, setSmsOtpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,24 +25,7 @@ export default function LoginPage() {
       const idToUse = pendingCreds?.identifier || identifier;
       const passwordToUse = pendingCreds?.password || password;
 
-      // If SMS OTP is required, verify the code
-      if (smsOtpRequired) {
-        const payload = {
-          identifier: idToUse,
-          password: passwordToUse,
-          code: smsOtpCode,
-        };
-        const res = await api.post('/auth/sms-otp/verify/', payload);
-        const token = res.data.token;
-        if (token && typeof window !== 'undefined') {
-          localStorage.setItem('token', token);
-        }
-        setSmsOtpRequired(false);
-        setSmsOtpCode('');
-        setPendingCreds(null);
-        router.push('/');
-        return;
-      }
+      // Login with password and optional MFA
 
       const payload: Record<string, string> = { password: passwordToUse };
       if (idToUse.includes('@')) {
@@ -78,11 +59,7 @@ export default function LoginPage() {
       const status = err?.response?.status;
       const errorData = err?.response?.data;
       
-      if (status === 402 && errorData?.sms_otp_required) {
-        setSmsOtpRequired(true);
-        setPendingCreds({ identifier, password });
-        setError(errorData?.message || 'SMS OTP verification required. Check your phone for the 6-digit code.');
-      } else if (errorData?.error) {
+      if (errorData?.error) {
         setError(errorData.error);
       } else if (errorData?.detail) {
         setError(errorData.detail);
@@ -96,17 +73,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleRequestSms = async () => {
-    setError(null);
-    try {
-      const payload = { identifier, password };
-      const res = await api.post('/auth/sms-otp/request/', payload);
-      setError(res.data?.message || 'SMS OTP sent to your phone.');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to send SMS OTP. Try again.');
-    }
-  };
-
   return (
     <div className="max-w-md mx-auto mt-12 bg-white p-6 rounded-md shadow">
       <h2 className="text-2xl font-semibold mb-4">Sign in</h2>
@@ -116,7 +82,7 @@ export default function LoginPage() {
           <input
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            disabled={mfaRequired || smsOtpRequired}
+            disabled={mfaRequired}
             placeholder="jane@doe.com or janedoe"
             className="w-full border px-3 py-2 rounded"
           />
@@ -164,18 +130,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {smsOtpRequired && (
-          <div>
-            <label className="block text-sm">SMS OTP Code</label>
-            <input
-              value={smsOtpCode}
-              onChange={(e) => setSmsOtpCode(e.target.value)}
-              placeholder="6-digit code from SMS"
-              className="w-full border px-3 py-2 rounded"
-              autoFocus
-            />
-          </div>
-        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -192,18 +146,8 @@ export default function LoginPage() {
 
         <div className="flex items-center justify-between gap-2">
           <button disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded flex-1">
-            {loading ? 'Signing in...' : smsOtpRequired ? 'Verify OTP' : mfaRequired ? 'Verify MFA' : 'Sign in'}
+            {loading ? 'Signing in...' : mfaRequired ? 'Verify MFA' : 'Sign in'}
           </button>
-          {!smsOtpRequired && !mfaRequired && (
-            <button
-              type="button"
-              onClick={handleRequestSms}
-              disabled={!identifier || !password || loading}
-              className="text-xs text-blue-600 underline hover:text-blue-700 whitespace-nowrap"
-            >
-              SMS OTP
-            </button>
-          )}
         </div>
 
         <a href="/register" className="block text-sm text-blue-600 text-center">

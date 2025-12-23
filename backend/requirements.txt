@@ -9,7 +9,6 @@ cryptography==41.0.7
 pyotp==2.9.0
 qrcode==7.4.2
 plaid-python==16.0.0
-twilio==8.10.0
 requests==2.31.0
 pytorch-tabnet==4.1.0
 matplotlib==3.8.2

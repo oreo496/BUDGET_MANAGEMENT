@@ -1,7 +1,6 @@
 from django.db import models
 import uuid
 import bcrypt
-from django.utils import timezone
 
 
 class User(models.Model):
@@ -15,8 +14,6 @@ class User(models.Model):
     two_factor_enabled = models.BooleanField(default=False)
     two_factor_secret = models.CharField(max_length=32, blank=True, null=True)  # TOTP secret
     backup_codes = models.TextField(blank=True, null=True)  # JSON array of backup codes
-    sms_otp_enabled = models.BooleanField(default=False)
-    sms_phone = models.CharField(max_length=20, blank=True, null=True)  # Phone for SMS OTP
     status = models.CharField(
         max_length=10,
         choices=[('ACTIVE', 'Active'), ('INACTIVE', 'Inactive')],
@@ -105,25 +102,5 @@ class Admin(models.Model):
         return self.email
 
 
-class SMSOtp(models.Model):
-    """Store SMS OTP codes for verification."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sms_otps')
-    code = models.CharField(max_length=6)  # 6-digit OTP
-    attempts = models.IntegerField(default=0)
-    max_attempts = models.IntegerField(default=3)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()  # 10-minute expiry
 
-    class Meta:
-        db_table = 'sms_otps'
-
-    def is_expired(self):
-        return timezone.now() > self.expires_at
-
-    def is_max_attempts_exceeded(self):
-        return self.attempts >= self.max_attempts
-
-    def __str__(self):
-        return f"OTP for {self.user.username} (created {self.created_at})"
 

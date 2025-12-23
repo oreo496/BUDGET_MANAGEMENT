@@ -234,12 +234,7 @@ EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
 # Base URL used in verification links (defaults to backend local)
 VERIFICATION_BASE_URL = os.getenv('VERIFICATION_BASE_URL', 'http://localhost:8000')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@example.com')
-# ============================================
-# SMS OTP CONFIGURATION (Twilio)
-# ============================================
-TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', '')
-TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')
-TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')  # Your Twilio number
+
 # ============================================
 # PLAID CONFIGURATION
 # ============================================
